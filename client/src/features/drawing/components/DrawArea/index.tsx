@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { getCoordinatesRelativeToElement } from "../../utils/getCanvasCoordinates";
 import { useMyUserStore } from "../../../user/store/useMyUserStore";
+import { useUserListStore } from "../../../user/store/useUserListStore";
+import { useDrawingStore } from "../../store/useDrawingStore";
 import styles from './DrawArea.module.css';
 import { SocketManager } from "../../../../shared/services/SocketManager";
 import type { DrawStroke, Point } from "../../../../shared/types/drawing.type";
@@ -36,6 +38,7 @@ export function DrawArea() {
   const otherUserStrokes = useRef<Map<string, Point[]>>(new Map());
   
   const { myUser } = useMyUserStore();
+  const { strokeColor } = useDrawingStore();
   const canUserDraw = useMemo(() => myUser !== null, [myUser]); 
   
   /**
@@ -80,7 +83,8 @@ export function DrawArea() {
   */
   const drawLine = useCallback((
     from: { x: number, y: number } | null,
-    to: { x: number, y: number }
+    to: { x: number, y: number },
+    color: string = '#000000'
   ) => {
     if (!canvasRef.current) {
       return;
@@ -91,7 +95,7 @@ export function DrawArea() {
       return;
     }
     
-    ctx.strokeStyle = 'black';
+    ctx.strokeStyle = color;
     ctx.lineWidth = 4;
     if (!from) {
       ctx.beginPath();
@@ -122,12 +126,13 @@ export function DrawArea() {
       {
         x: coordinates.x,
         y: coordinates.y,
-      });
+      },
+      strokeColor);
       
       const relativeCoordinates = toRelativeCoordinates(coordinates.x, coordinates.y);
       SocketManager.emit('draw:move', relativeCoordinates);
       
-    }, [drawLine, getCanvasCoordinates, toRelativeCoordinates]);
+    }, [drawLine, getCanvasCoordinates, toRelativeCoordinates, strokeColor]);
     
     
     const onMouseUp = useCallback(() => {
@@ -155,14 +160,14 @@ export function DrawArea() {
       
       /** Transformation des coordoonées mouse (relatives à la page) vers des coordonnées relative au canvas  */
       const coordinates = getCanvasCoordinates(e);
-      drawLine(null, coordinates);
+      drawLine(null, coordinates, strokeColor);
       
       const relativeCoordinates = toRelativeCoordinates(coordinates.x, coordinates.y);
       SocketManager.emit('draw:start', {
         x: relativeCoordinates.x,
         y: relativeCoordinates.y,
         strokeWidth: 3,
-        color: 'black'
+        color: strokeColor
       });
       
       /**
@@ -171,7 +176,7 @@ export function DrawArea() {
       */
       canvasRef.current?.addEventListener('mousemove', onMouseMove);
       canvasRef.current?.addEventListener('mouseup', onMouseUp);
-    }, [canUserDraw, onMouseMove, onMouseUp, drawLine, getCanvasCoordinates, toRelativeCoordinates]);
+    }, [canUserDraw, onMouseMove, onMouseUp, drawLine, getCanvasCoordinates, toRelativeCoordinates, strokeColor]);
     
     /**
     * ===================
@@ -211,6 +216,7 @@ export function DrawArea() {
     const drawOtherUserPoints = useCallback((
       userId: string, 
       points: Point[],
+      color: string = '#000000',
       forceRedraw?: boolean 
     ) => {
      const previousPoints = forceRedraw ? [] : otherUserStrokes.current.get(userId) || [];
@@ -226,7 +232,7 @@ export function DrawArea() {
       
        const absoluteFrom = from ? toAbsoluteCoordinates(from.x, from.y) : null;
        const absoluteTo = toAbsoluteCoordinates(to.x, to.y);
-       drawLine(absoluteFrom, absoluteTo);
+       drawLine(absoluteFrom, absoluteTo, color);
      });
 
 
@@ -234,7 +240,7 @@ export function DrawArea() {
    }, [drawLine, toAbsoluteCoordinates]);
     
     const onOtherUserDrawMove = useCallback((payload: DrawStroke) => {
-      drawOtherUserPoints(payload.userId, payload.points);
+      drawOtherUserPoints(payload.userId, payload.points, payload.color);
     }, [drawOtherUserPoints]);
     
     const onOtherUserDrawEnd = useCallback((payload: DrawStroke) => {
@@ -247,13 +253,18 @@ export function DrawArea() {
           return;
         }
         data.strokes.forEach((stroke) => {
-          drawOtherUserPoints(stroke.userId, stroke.points, true);
+          drawOtherUserPoints(stroke.userId, stroke.points, stroke.color, true);
         });
       })
     }, [drawOtherUserPoints]);
     
     const onOtherUserDrawStart = useCallback((payload: DrawStroke) => {
-      drawOtherUserPoints(payload.userId, payload.points);
+      drawOtherUserPoints(payload.userId, payload.points, payload.color);
+      useUserListStore.setState((state) => {
+        const newColors = new Map(state.userStrokeColors);
+        newColors.set(payload.userId, payload.color);
+        return { userStrokeColors: newColors };
+      });
       
       otherUserStrokes.current.set(payload.userId, payload.points);
     }, [drawOtherUserPoints]);
@@ -305,6 +316,17 @@ export function DrawArea() {
     useEffect(() => {
       getAllStrokes();
     }, [getAllStrokes]);
+
+    useEffect(() => {
+      /** Met à jour la couleur de l'utilisateur courant dans la liste */
+      if (myUser?.id) {
+        useUserListStore.setState((state) => {
+          const newColors = new Map(state.userStrokeColors);
+          newColors.set(myUser.id, strokeColor);
+          return { userStrokeColors: newColors };
+        });
+      }
+    }, [myUser?.id, strokeColor]);
     
     return (
       <div className={[styles.drawArea, 'w-full', 'h-full', 'overflow-hidden', 'flex', 'items-center'].join(' ')} ref={parentRef}>

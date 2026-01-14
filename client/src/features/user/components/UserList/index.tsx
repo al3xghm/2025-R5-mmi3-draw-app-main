@@ -1,3 +1,5 @@
+import { useUserListStore } from "../../store/useUserListStore";
+
 export type UserListProps = {
   users: {
     id: string;
@@ -7,20 +9,32 @@ export type UserListProps = {
 }
 
 export function UserList({ users }: UserListProps){
+  const { userStrokeColors } = useUserListStore();
+
   return (
     <div className="flex flex-col gap-3">
       <span className="font-bold">Liste des utilisateurs: <div className="badge badge-soft badge-info">{users.length}</div></span>
 
       <ul className="list bg-base-100 rounded-box shadow-md">
         {users.length > 0 ? 
-          users.map((user) => (
-            <li className="list-row items-center" key={user.id}>
-              <div><img className="size-8 rounded-box" src={user.avatar} /></div>
-              <div>
-                <div className="text-xs uppercase font-semibold">{user.username}</div>
-              </div>
-            </li>
-          ))
+          users.map((user) => {
+            const userColor = userStrokeColors.get(user.id) || '#000000';
+            return (
+              <li className="list-row items-center" key={user.id}>
+                <div><img className="size-8 rounded-box" src={user.avatar} /></div>
+                <div>
+                  <div className="text-xs uppercase font-semibold">{user.username}</div>
+                </div>
+                <div className="ml-auto flex items-center gap-2">
+                  <div 
+                    className="size-4 rounded-full border border-gray-300"
+                    style={{ backgroundColor: userColor }}
+                    title={`Couleur: ${userColor}`}
+                  />
+                </div>
+              </li>
+            );
+          })
         :
         <li className="list-row opacity-50">Pas d'utilisateur connecté actuellement.<br /> Rejoignez la partie pour pouvoir dessiner.</li>
       }
