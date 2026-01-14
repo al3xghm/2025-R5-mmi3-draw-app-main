@@ -1,4 +1,5 @@
 import { useUserListStore } from "../../store/useUserListStore";
+import { UserAvatar } from "../UserAvatar/UserAvatar";
 
 export type UserListProps = {
   users: {
@@ -21,7 +22,9 @@ export function UserList({ users }: UserListProps){
             const userColor = userStrokeColors.get(user.id) || '#000000';
             return (
               <li className="list-row items-center" key={user.id}>
-                <div><img className="size-8 rounded-box" src={user.avatar} /></div>
+                <div>
+                  <UserAvatar username={user.username} avatar={user.avatar} size="md" />
+                </div>
                 <div>
                   <div className="text-xs uppercase font-semibold">{user.username}</div>
                 </div>

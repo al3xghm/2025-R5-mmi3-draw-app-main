@@ -1,3 +1,5 @@
+import { UserAvatar } from "../UserAvatar/UserAvatar";
+
 export type MyUserBadgeProps = {
   username: string;
   avatar: string;
@@ -8,7 +10,7 @@ export const MyUserBadge = (myUser: MyUserBadgeProps) => {
     <div className="my-user-badge badge badge-lg badge-primary badge-soft">
       <div className="avatar">
         <div className="w-4 rounded-full">
-          <img src={myUser.avatar} alt={myUser.username} />
+          <UserAvatar username={myUser.username} avatar={myUser.avatar} size="sm" />
         </div>
       </div>
       <span className="username">{myUser.username}</span>
