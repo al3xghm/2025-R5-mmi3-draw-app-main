@@ -8,11 +8,7 @@ export type MyUserBadgeProps = {
 export const MyUserBadge = (myUser: MyUserBadgeProps) => {
   return (
     <div className="my-user-badge badge badge-lg badge-primary badge-soft">
-      <div className="avatar">
-        <div className="w-4 rounded-full">
-          <UserAvatar username={myUser.username} avatar={myUser.avatar} size="sm" />
-        </div>
-      </div>
+      <UserAvatar username={myUser.username} avatar={myUser.avatar} size="sm" />
       <span className="username">{myUser.username}</span>
     </div>
   );
